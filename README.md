@@ -139,6 +139,34 @@ to your `cmake` command. See the [LAMMPS documentation](https://docs.lammps.org/
 
 Kokkos support is currently only available for `pair_style allegro`.
 
+#### Problems with KOKKOS + CUDA
+When compiling for KOKKOS and CUDA, some users have reported this issue:
+```
+-- Looking for C++ include cmath - not found
+CMake Error at CMakeLists.txt:641 (message):
+  Could not find the required 'cmath' header
+```
+
+This has been caused by an unrecognized command line option in the past. To confirm, check the `lammps/build/CMakeFiles/CMakeConfigureLog.yaml` and if you see the lines:
+```
+c++: error: unrecognized command-line option ‘--diag_suppress=unrecognized_pragma,--diag_suppress=128’
+```
+
+Then in `lammps/cmake/CMakeLists.txt:`, find and remove: `--diag_suppress=128`. This section should look like:
+```
+# silence nvcc warnings
+
+if((PKG_KOKKOS) AND (Kokkos_ENABLE_CUDA) AND NOT
+
+    ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "IntelLLVM")
+
+    OR (CMAKE_CXX_COMPILER_ID STREQUAL "XLClang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "CrayClang")))
+
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Xcudafe --diag_suppress=unrecognized_pragma,--diag_suppress=128")
+
+endif()
+```
+
 #### OpenMP (optional, better performance, mutually exclusive with Kokkos)
 `pair_allegro` supports the use of OpenMP to accelerate certain parts of the pair style, by setting `OMP_NUM_THREADS` and using the [LAMMPS OpenMP package](https://docs.lammps.org/Speed_omp.html).
 OpenMP and Kokkos are mutually exclusive.
